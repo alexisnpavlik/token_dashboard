@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Token Dashboard
+Comment=Quota restante de Claude Code y Antigravity
+Exec=python3 /home/alexis/Documents/Github/token_dashboard/main.py
+Icon=utilities-system-monitor
+Terminal=false
+Categories=Utility;
+X-GNOME-Autostart-enabled=true
