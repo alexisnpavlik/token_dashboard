@@ -23,3 +23,21 @@ def format_reset(resets_at):
 def format_pct(remaining_pct):
     """Formatea el porcentaje restante con cero decimales."""
     return f"{remaining_pct:.0f}%"
+
+
+def quota_level(remaining_pct):
+    """Devuelve el nivel según el porcentaje restante: good/warn/alert/low."""
+    if remaining_pct >= 50:
+        return "good"
+    if remaining_pct >= 25:
+        return "warn"
+    if remaining_pct >= 10:
+        return "alert"
+    return "low"
+
+
+def level_emoji(remaining_pct):
+    """Devuelve el círculo de color según el porcentaje restante."""
+    return {"good": "🟢", "warn": "🟡", "alert": "🟠", "low": "🔴"}[
+        quota_level(remaining_pct)
+    ]

@@ -1,7 +1,9 @@
-"""Dashboard de quota restante de Claude Code y Antigravity en la barra de GNOME."""
+"""Tray de quota restante de Claude Code y Antigravity en la barra de GNOME."""
 import logging
+import os
+import subprocess
+import sys
 import threading
-from datetime import datetime
 
 import gi
 
@@ -11,7 +13,6 @@ from gi.repository import GLib, Gtk
 from config.config import REFRESH_INTERVAL_MINUTES
 from modules.antigravity_usage import get_antigravity_usage
 from modules.claude_usage import get_claude_usage
-from modules.dashboard_window import DashboardWindow
 from modules.tray import TokenTray
 
 logging.basicConfig(
@@ -19,11 +20,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+DASHBOARD_APP_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "dashboard_app.py"
+)
+
 _refreshing = False
 
 
-def refresh(window, tray):
-    """Lanza la consulta de quota en segundo plano y actualiza la UI."""
+def open_dashboard():
+    """Abre la ventana GTK4 del dashboard como proceso aparte (single-instance)."""
+    subprocess.Popen([sys.executable, DASHBOARD_APP_PATH])
+
+
+def refresh(tray):
+    """Lanza la consulta de quota en segundo plano y actualiza el tray."""
     global _refreshing
     if _refreshing:
         return
@@ -36,7 +46,6 @@ def refresh(window, tray):
         _refreshing = False
 
         def apply():
-            window.update_data(claude, antigravity, datetime.now())
             tray.update_data(claude, antigravity)
             return False
 
@@ -46,22 +55,20 @@ def refresh(window, tray):
 
 
 def main():
-    window = DashboardWindow()
+    """Arranca el tray; sin AppIndicator delega en la ventana GTK4."""
     tray = TokenTray(
-        on_open=lambda: window.present(),
-        on_refresh=lambda: refresh(window, tray),
+        on_open=open_dashboard,
+        on_refresh=lambda: refresh(tray),
         on_quit=Gtk.main_quit,
     )
-    window.on_refresh = lambda: refresh(window, tray)
-
-    refresh(window, tray)
-    GLib.timeout_add_seconds(
-        REFRESH_INTERVAL_MINUTES * 60, lambda: (refresh(window, tray), True)[1]
-    )
-
     if not tray.available:
-        window.show_all()
+        logger.warning("Sin AppIndicator: abriendo solo la ventana GTK4")
+        os.execv(sys.executable, [sys.executable, DASHBOARD_APP_PATH])
 
+    refresh(tray)
+    GLib.timeout_add_seconds(
+        REFRESH_INTERVAL_MINUTES * 60, lambda: (refresh(tray), True)[1]
+    )
     Gtk.main()
 
 

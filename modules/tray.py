@@ -1,12 +1,13 @@
 """Icono en la barra de GNOME (AppIndicator) con resumen de quota."""
 import logging
+from datetime import datetime
 
 import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from modules.format_tools import format_pct, format_reset
+from modules.format_tools import format_pct, format_reset, level_emoji
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,14 @@ except (ValueError, ImportError):
     logger.warning(
         "AyatanaAppIndicator3 no disponible — instala "
         "gir1.2-ayatanaappindicator3-0.1 para el icono en la barra"
+    )
+
+
+def _quota_line(label, remaining_pct, resets_at):
+    """Arma la línea de menú con círculo de estado, % y hora de reset."""
+    return (
+        f"{level_emoji(remaining_pct)} {label} — {format_pct(remaining_pct)}"
+        f" · reset {format_reset(resets_at)}"
     )
 
 
@@ -39,22 +48,28 @@ class TokenTray:
         )
         self._indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
         self._indicator.set_title("Quota Claude Code / Antigravity")
-        self._indicator.set_menu(self._build_menu([], []))
+        self._indicator.set_menu(self._build_menu([]))
 
-    def _build_menu(self, claude_lines, antigravity_lines):
-        """Construye el menú con las líneas de quota recibidas."""
+    def _build_menu(self, sections, updated_at=None):
+        """Construye el menú: secciones (título, líneas) de quota + acciones."""
         menu = Gtk.Menu()
 
-        for text in claude_lines + (["—"] if antigravity_lines else []) \
-                + antigravity_lines:
-            if text == "—":
-                menu.append(Gtk.SeparatorMenuItem())
-                continue
-            item = Gtk.MenuItem(label=text)
-            item.set_sensitive(False)
-            menu.append(item)
+        for title, lines in sections:
+            header = Gtk.MenuItem(label=title)
+            header.set_sensitive(False)
+            menu.append(header)
+            for text in lines:
+                item = Gtk.MenuItem(label=text)
+                item.set_sensitive(False)
+                menu.append(item)
+            menu.append(Gtk.SeparatorMenuItem())
 
-        if claude_lines or antigravity_lines:
+        if updated_at is not None:
+            updated = Gtk.MenuItem(
+                label=f"Actualizado {updated_at.strftime('%H:%M')}"
+            )
+            updated.set_sensitive(False)
+            menu.append(updated)
             menu.append(Gtk.SeparatorMenuItem())
 
         open_item = Gtk.MenuItem(label="Abrir dashboard")
@@ -79,23 +94,28 @@ class TokenTray:
             return
 
         claude_lines = [
-            f"Claude {w['label']}: {format_pct(w['remaining_pct'])} "
-            f"· reset {format_reset(w['resets_at'])}"
+            _quota_line(w["label"], w["remaining_pct"], w["resets_at"])
             for w in claude["windows"]
-        ] or [f"Claude: error ({claude['error']})"]
+        ] or [f"⚠ Error: {claude['error']}"]
 
         antigravity_lines = [
-            f"AG {m['label']}: {format_pct(m['remaining_pct'])} "
-            f"· reset {format_reset(m['resets_at'])}"
+            _quota_line(m["label"], m["remaining_pct"], m["resets_at"])
             for m in antigravity["models"]
-        ] or [f"Antigravity: error ({antigravity['error']})"]
+        ] or [f"⚠ Error: {antigravity['error']}"]
 
         session = next(
             (w for w in claude["windows"] if w["key"] == "five_hour"), None
         )
-        label = format_pct(session["remaining_pct"]) if session else "?"
-        self._indicator.set_label(label, "100%")
+        if session:
+            label = (
+                f"{level_emoji(session['remaining_pct'])} "
+                f"{format_pct(session['remaining_pct'])}"
+            )
+        else:
+            label = "⚠"
+        self._indicator.set_label(label, "🟢 100%")
 
-        self._indicator.set_menu(
-            self._build_menu(claude_lines, antigravity_lines)
-        )
+        self._indicator.set_menu(self._build_menu(
+            [("CLAUDE CODE", claude_lines), ("ANTIGRAVITY", antigravity_lines)],
+            datetime.now(),
+        ))
