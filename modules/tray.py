@@ -1,4 +1,4 @@
-"""Icono en la barra de GNOME (AppIndicator) con resumen de quota."""
+"""Icono en la barra de GNOME (AppIndicator) con resumen de cuotas, tokens y costos."""
 import logging
 from datetime import datetime
 
@@ -30,8 +30,17 @@ def _quota_line(label, remaining_pct, resets_at):
     )
 
 
+def _format_compact_num(num: float) -> str:
+    """Formatea grandes números de tokens en formato compacto (e.g. 1.2M, 450k)."""
+    if num >= 1_000_000:
+        return f"{num / 1_000_000:.1f}M"
+    elif num >= 1_000:
+        return f"{num / 1_000:.0f}k"
+    return str(int(num))
+
+
 class TokenTray:
-    """Indicador en la barra: % de sesión en la etiqueta y menú con detalle."""
+    """Indicador en la barra con tokens de hoy, cuotas y menú extendido."""
 
     def __init__(self, on_open, on_refresh, on_quit):
         self.on_open = on_open
@@ -47,15 +56,16 @@ class TokenTray:
             AppIndicator.IndicatorCategory.APPLICATION_STATUS,
         )
         self._indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
-        self._indicator.set_title("Quota Claude Code / Antigravity")
+        self._indicator.set_title("TokenBar Linux")
         self._indicator.set_menu(self._build_menu([]))
 
     def _build_menu(self, sections, updated_at=None):
-        """Construye el menú: secciones (título, líneas) de quota + acciones."""
+        """Construye el menú contextual."""
         menu = Gtk.Menu()
 
         for title, lines in sections:
-            header = Gtk.MenuItem(label=title)
+            header = Gtk.MenuItem(label=f"<b>{title}</b>")
+            header.get_child().set_use_markup(True)
             header.set_sensitive(False)
             menu.append(header)
             for text in lines:
@@ -66,13 +76,13 @@ class TokenTray:
 
         if updated_at is not None:
             updated = Gtk.MenuItem(
-                label=f"Actualizado {updated_at.strftime('%H:%M')}"
+                label=f"Actualizado {updated_at.strftime('%H:%M:%S')}"
             )
             updated.set_sensitive(False)
             menu.append(updated)
             menu.append(Gtk.SeparatorMenuItem())
 
-        open_item = Gtk.MenuItem(label="Abrir dashboard")
+        open_item = Gtk.MenuItem(label="Abrir Dashboard completo")
         open_item.connect("activate", lambda *_: self.on_open())
         menu.append(open_item)
 
@@ -88,34 +98,50 @@ class TokenTray:
         menu.show_all()
         return menu
 
-    def update_data(self, claude, antigravity):
-        """Actualiza etiqueta y menú con la quota actual."""
-        if not self.available:
+    def update_data(self, data):
+        """Actualiza etiqueta y menú con los datos agregados."""
+        if not self.available or not data:
             return
+
+        claude = data.get("claude_quota", {})
+        antigravity = data.get("antigravity_quota", {})
 
         claude_lines = [
             _quota_line(w["label"], w["remaining_pct"], w["resets_at"])
-            for w in claude["windows"]
-        ] or [f"⚠ Error: {claude['error']}"]
+            for w in claude.get("windows", [])
+        ] or [f"⚠ Error: {claude.get('error', 'Sin datos')}"]
 
         antigravity_lines = [
             _quota_line(m["label"], m["remaining_pct"], m["resets_at"])
-            for m in antigravity["models"]
-        ] or [f"⚠ Error: {antigravity['error']}"]
+            for m in antigravity.get("models", [])
+        ] or [f"⚠ Error: {antigravity.get('error', 'Sin datos')}"]
+
+        today_tok_str = _format_compact_num(data.get("today_tokens", 0))
+        today_cost = data.get("today_cost", 0.0)
+        speed = data.get("tokens_per_min", 0.0)
+
+        summary_lines = [
+            f"⚡ Tokens Hoy: {today_tok_str} ({data.get('today_tokens', 0):,} tok)",
+            f"💵 Costo Hoy: ${today_cost:.2f} USD",
+            f"📈 Velocidad: {speed:.1f} tok/min",
+        ]
 
         session = next(
-            (w for w in claude["windows"] if w["key"] == "five_hour"), None
+            (w for w in claude.get("windows", []) if w["key"] == "five_hour"), None
         )
         if session:
-            label = (
-                f"{level_emoji(session['remaining_pct'])} "
-                f"{format_pct(session['remaining_pct'])}"
-            )
+            emoji = level_emoji(session["remaining_pct"])
+            pct_str = format_pct(session["remaining_pct"])
+            label_text = f"{emoji} {pct_str} | {today_tok_str} | ${today_cost:.2f}"
         else:
-            label = "⚠"
-        self._indicator.set_label(label, "🟢 100%")
+            label_text = f"⚡ {today_tok_str} | ${today_cost:.2f}"
 
-        self._indicator.set_menu(self._build_menu(
-            [("CLAUDE CODE", claude_lines), ("ANTIGRAVITY", antigravity_lines)],
-            datetime.now(),
-        ))
+        self._indicator.set_label(label_text, "100%")
+
+        sections = [
+            ("RESUMEN DE HOY", summary_lines),
+            ("CLAUDE CODE (CUOTAS)", claude_lines),
+            ("ANTIGRAVITY (CUOTAS)", antigravity_lines),
+        ]
+
+        self._indicator.set_menu(self._build_menu(sections, data.get("updated_at", datetime.now())))

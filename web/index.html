@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TokenBar — Liquid Glass Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="glass-container">
+    <!-- Header -->
+    <header class="glass-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="url(#lightning-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+              <linearGradient id="lightning-grad" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#10B981"/>
+                <stop offset="1" stop-color="#06B6D4"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="title">TokenBar</span>
+          <span class="subtitle">LINUX LIQUID GLASS</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="burn-pill" id="speed-pill">
+          <span class="pulse-dot"></span>
+          <span class="burn-text" id="header-speed">⚡ 0.0 tok/min</span>
+        </div>
+        <button class="icon-btn" id="refresh-btn" title="Actualizar datos">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Lens Navigation Bar -->
+    <nav class="glass-nav">
+      <button class="nav-tab active" data-lens="overview">
+        <span class="tab-icon">📊</span> Overview
+      </button>
+      <button class="nav-tab" data-lens="heatmap">
+        <span class="tab-icon">🟩</span> Contribución
+      </button>
+      <button class="nav-tab" data-lens="models">
+        <span class="tab-icon">🤖</span> Modelos
+      </button>
+      <button class="nav-tab" data-lens="agents">
+        <span class="tab-icon">🛠️</span> Agentes
+      </button>
+      <button class="nav-tab" data-lens="stats">
+        <span class="tab-icon">📈</span> Actividad
+      </button>
+      <button class="nav-tab" data-lens="quotas">
+        <span class="tab-icon">⏱️</span> Cuotas
+      </button>
+      <div class="nav-indicator"></div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      <!-- Lens 1: Overview -->
+      <section class="lens-page active" id="lens-overview">
+        <div class="hero-grid">
+          <div class="hero-card emerald">
+            <div class="card-glow"></div>
+            <span class="card-title">TOKENS HOY</span>
+            <div class="card-value" id="card-today-tok">0</div>
+            <div class="card-sub" id="card-today-cost">$0.00 USD</div>
+          </div>
+
+          <div class="hero-card cyan">
+            <div class="card-glow"></div>
+            <span class="card-title">ÚLTIMOS 7 DÍAS</span>
+            <div class="card-value" id="card-7d-tok">0</div>
+            <div class="card-sub" id="card-7d-cost">$0.00 USD</div>
+          </div>
+
+          <div class="hero-card violet">
+            <div class="card-glow"></div>
+            <span class="card-title">VELOCIDAD EN VIVO</span>
+            <div class="card-value" id="card-speed">0.0</div>
+            <div class="card-sub">tokens por minuto</div>
+          </div>
+
+          <div class="hero-card amber">
+            <div class="card-glow"></div>
+            <span class="card-title">TOTAL HISTÓRICO</span>
+            <div class="card-value" id="card-total-tok">0</div>
+            <div class="card-sub" id="card-total-cost">$0.00 USD</div>
+          </div>
+        </div>
+
+        <div class="glass-section">
+          <div class="section-header">
+            <h3>Agentes de IA Detectados</h3>
+            <span class="section-badge" id="agents-count-badge">0 activos</span>
+          </div>
+          <div class="agents-grid" id="overview-agents-list"></div>
+        </div>
+      </section>
+
+      <!-- Lens 2: Contribution Heatmap -->
+      <section class="lens-page" id="lens-heatmap">
+        <div class="glass-section">
+          <div class="section-header">
+            <div>
+              <h3>Matriz de Contribución de IA</h3>
+              <p class="section-desc">Actividad diaria de tokens y costos en los últimos 90 días</p>
+            </div>
+            <div class="legend-pills">
+              <span class="legend-item"><span class="sq lvl-0"></span>0</span>
+              <span class="legend-item"><span class="sq lvl-1"></span>Bajo</span>
+              <span class="legend-item"><span class="sq lvl-2"></span>Medio</span>
+              <span class="legend-item"><span class="sq lvl-3"></span>Alto</span>
+              <span class="legend-item"><span class="sq lvl-4"></span>Intenso</span>
+            </div>
+          </div>
+
+          <div class="heatmap-wrapper">
+            <div class="heatmap-grid" id="heatmap-container"></div>
+          </div>
+
+          <div class="heatmap-detail-card" id="heatmap-detail">
+            <span class="detail-icon">📅</span>
+            <span class="detail-text">Haz clic en cualquier celda para ver el desglose exacto de tokens y costo</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lens 3: Models -->
+      <section class="lens-page" id="lens-models">
+        <div class="glass-section">
+          <div class="section-header">
+            <h3>Ranking de Modelos de IA</h3>
+            <p class="section-desc">Porcentaje de consumo y gasto por modelo</p>
+          </div>
+          <div class="models-list" id="models-container"></div>
+        </div>
+      </section>
+
+      <!-- Lens 4: Agents -->
+      <section class="lens-page" id="lens-agents">
+        <div class="glass-section">
+          <div class="section-header">
+            <h3>Herramientas y Agentes de IA</h3>
+            <p class="section-desc">Distribución de trabajo por cliente/CLI local</p>
+          </div>
+          <div class="agents-list" id="agents-container"></div>
+        </div>
+      </section>
+
+      <!-- Lens 5: Activity Stats -->
+      <section class="lens-page" id="lens-stats">
+        <div class="glass-section">
+          <div class="section-header">
+            <h3>Actividad Horaria (00:00 - 23:00)</h3>
+          </div>
+          <div class="bar-chart" id="hourly-chart"></div>
+        </div>
+
+        <div class="glass-section">
+          <div class="section-header">
+            <h3>Actividad por Día de la Semana</h3>
+          </div>
+          <div class="bar-chart" id="daily-chart"></div>
+        </div>
+      </section>
+
+      <!-- Lens 6: Quotas -->
+      <section class="lens-page" id="lens-quotas">
+        <div class="glass-section">
+          <div class="section-header">
+            <h3>Claude Code — Cuotas de Sesión</h3>
+          </div>
+          <div class="quotas-list" id="claude-quotas-container"></div>
+        </div>
+
+        <div class="glass-section">
+          <div class="section-header">
+            <h3>Antigravity / Gemini — Cuotas de Modelo</h3>
+          </div>
+          <div class="quotas-list" id="antigravity-quotas-container"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Status Bar -->
+    <footer class="glass-footer">
+      <span id="footer-status">Sincronizado</span>
+      <span id="footer-updated-at">Última actualización: --:--:--</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
