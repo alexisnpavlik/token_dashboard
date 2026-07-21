@@ -1,5 +1,6 @@
-"""Icono en la barra de GNOME (AppIndicator) con resumen de cuotas, tokens y costos."""
+"""Icono en la barra de GNOME (AppIndicator) sin icono cargado, solo texto/números."""
 import logging
+import os
 from datetime import datetime
 
 import gi
@@ -11,6 +12,10 @@ from modules.format_tools import format_pct, format_reset, level_emoji
 
 logger = logging.getLogger(__name__)
 
+BLANK_ICON_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "blank.png"
+)
+
 try:
     gi.require_version("AyatanaAppIndicator3", "0.1")
     from gi.repository import AyatanaAppIndicator3 as AppIndicator
@@ -18,7 +23,7 @@ except (ValueError, ImportError):
     AppIndicator = None
     logger.warning(
         "AyatanaAppIndicator3 no disponible — instala "
-        "gir1.2-ayatanaappindicator3-0.1 para el icono en la barra"
+        "gir1.2-ayatanaappindicator3-0.1 para el texto en la barra"
     )
 
 
@@ -40,7 +45,7 @@ def _format_compact_num(num: float) -> str:
 
 
 class TokenTray:
-    """Indicador en la barra con tokens de hoy, cuotas y menú extendido."""
+    """Indicador minimalista en la barra superior (solo números y texto)."""
 
     def __init__(self, on_open, on_refresh, on_quit):
         self.on_open = on_open
@@ -50,11 +55,15 @@ class TokenTray:
         if not self.available:
             return
 
+        icon_path = BLANK_ICON_PATH if os.path.exists(BLANK_ICON_PATH) else "utilities-system-monitor"
         self._indicator = AppIndicator.Indicator.new(
             "token-dashboard",
-            "utilities-system-monitor",
+            icon_path,
             AppIndicator.IndicatorCategory.APPLICATION_STATUS,
         )
+        if os.path.exists(BLANK_ICON_PATH):
+            self._indicator.set_icon_full(BLANK_ICON_PATH, "TokenBar")
+
         self._indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
         self._indicator.set_title("TokenBar Linux")
         self._indicator.set_menu(self._build_menu([]))
@@ -99,7 +108,7 @@ class TokenTray:
         return menu
 
     def update_data(self, data):
-        """Actualiza etiqueta y menú con los datos agregados."""
+        """Actualiza la etiqueta de la barra superior (solo números y métricas)."""
         if not self.available or not data:
             return
 
